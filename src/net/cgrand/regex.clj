@@ -1,5 +1,5 @@
 (ns net.cgrand.regex
-  "A DSL for people who prefer verbose, maintenable regexes to terse 
+  "A DSL for people who prefer verbose, maintenable regexes to terse
    now-you-have-two-problems ones."
   {:author "Christophe Grand"}
   (:refer-clojure :exclude [repeat + * - resolve])
@@ -55,7 +55,7 @@
     (derive [c x]
       (when (= c x) "")))
 
-(extend-type String ; a String denotes a literal sequence of characters to match 
+(extend-type String ; a String denotes a literal sequence of characters to match
   RegexValue
     (pattern [s]
       (Pattern/quote s))
@@ -71,7 +71,7 @@
   RegexValue
     (pattern [set]
       (str "(?:" (s/join "|" (map pattern set)) ")"))
-    (groupnames [set] 
+    (groupnames [set]
       (mapcat groupnames set))
     (match-empty? [set] (some match-empty? set))
   dfa/State
@@ -87,7 +87,7 @@
   RegexValue
     (pattern [v]
       (s/join (map pattern v)))
-    (groupnames [v] 
+    (groupnames [v]
       (mapcat groupnames v))
     (match-empty? [v] (every? match-empty? v))
   dfa/State
@@ -104,25 +104,25 @@
               dxxs (when dx (if xs (cons dx xs) dx))]
           (or
             ; I have a nagging doubt that the set below may throw a duplicate
-            ; key exception without the not= 
-            (and dxxs dxs (not= dxxs dxs) #{dxxs dxs}) 
+            ; key exception without the not=
+            (and dxxs dxs (not= dxxs dxs) #{dxxs dxs})
             dxxs dxs)))))
 
 (extend-type clojure.lang.APersistentVector ; a Vector denotes a group (capturing or not)
   RegexValue
     (pattern [v]
-      (if (-> v rseq second (= :as)) 
+      (if (-> v rseq second (= :as))
         (str "(" (pattern (as-seq v)) ")")
         (pattern (as-seq v))))
-    (groupnames [v] 
+    (groupnames [v]
       (if (-> v rseq second (= :as))
         (cons (peek v) (groupnames (as-seq v)))
         (groupnames (as-seq v))))
-    (match-empty? [v] 
+    (match-empty? [v]
       (match-empty? (as-seq v)))
   dfa/State
     (accept? [this] (match-empty? this))
-    (firsts [v] 
+    (firsts [v]
       (dfa/firsts (seq (as-seq v))))
     (derive [v c]
       (dfa/derive (as-seq v) c)))
@@ -142,15 +142,15 @@
     (pattern [cs]
       (let [reserved (set "[]&^-")
             esc #(if (or (not (< 0x1F (int %) 0x7F)) (reserved %))
-                   (format "\\u%04X" (int %)) 
+                   (format "\\u%04X" (int %))
                    (char %))
             cs (-> cs cs/charset cs/ranges)]
-        (apply str (concat ["["] 
+        (apply str (concat ["["]
                            (mapcat (fn [[a b]]
                                      (if (and a (= a b))
                                        [(esc a)]
-                                       [(esc (or a \u0000)) "-" 
-                                        (esc (or b \uFFFF))])) cs) 
+                                       [(esc (or a \u0000)) "-"
+                                        (esc (or b \uFFFF))])) cs)
                            ["]"]))))
     (groupnames [v] [])
     (match-empty? [this] false)
@@ -166,16 +166,16 @@
     (groupnames [_] [])
     (match-empty? [_] false))
 
-(defn regex [& specs] 
+(defn regex [& specs]
   (regex* (vec specs)))
 
 (defrecord Repeat [frag min max]
   RegexValue
-    (pattern [this] 
+    (pattern [this]
       (let [s (pattern frag)
             max (or max "")]
         (str "(?:" s "){" min "," max "}")))
-    (groupnames [this] 
+    (groupnames [this]
       (groupnames frag))
     (match-empty? [this] (or (zero? min) (match-empty? frag)))
   dfa/State
@@ -189,22 +189,42 @@
           (nil? max) (list dfrag this)
           :else dfrag))))
 
-(defn repeat 
- ([spec] (Repeat. spec 0 nil))  
+(defn repeat
+ ([spec] (Repeat. spec 0 nil))
  ([spec min] (Repeat. spec min nil))
  ([spec min max] (Repeat. spec min max)))
+
+(defrecord Alternate [frags]
+  RegexValue
+  (pattern [this]
+    (str "(?:" (s/join "|" (map pattern frags)) ")"))
+  (groupnames [this]
+    (mapcat groupnames frags))
+  (match-empty? [this] (some match-empty? frags))
+  dfa/State
+  (accept? [this] (match-empty? frags))
+  (firsts [this]
+    (reduce cs/disjunctive-union
+            (map dfa/firsts frags)))
+  (derive [s c]
+      (when-let [[x & xs :as ds] (seq (keep #(dfa/derive % c) s))]
+        (if xs (set ds) x))))
 
 (defn *
  [& specs]
   (repeat (vec specs)))
 
-(defn + 
+(defn +
  [& specs]
   (repeat (vec specs) 1))
 
 (defn ?
  [& specs]
   (repeat (vec specs) 0 1))
+
+(defn |
+  [& specs]
+  (Alternate. specs))
 
 (def any cs/any-char)
 
@@ -240,7 +260,7 @@
         (zipmap (map keyword syms) syms))))
 
 (def posix
-  (letmap 
+  (letmap
     Lower {\a \z}
     Upper {\A \Z}
     ASCII {\u0000 \u007F}
@@ -275,11 +295,11 @@
       (= a b) a
       :else #{a b})))
 
-(defn- solve 
+(defn- solve
   "If the equation is recursive, apply Arden's rule."
   [x rhs]
   (if-let [seg (rhs x)]
-    (into {} 
+    (into {}
       (for [[s re] (dissoc rhs x)]
         [s (cat (repeat seg) re)]))
     rhs))
@@ -289,7 +309,7 @@
 
 (defn- substitute1 [yrhs x xrhs]
   (if-let [re (yrhs x)]
-    (reduce (fn [yrhs [z zre]] (update-in yrhs [z] either-cat re zre)) 
+    (reduce (fn [yrhs [z zre]] (update-in yrhs [z] either-cat re zre))
       (dissoc yrhs x) xrhs)
     yrhs))
 
@@ -309,12 +329,12 @@
 (defn - [& specs]
   (dfa-to-spec (apply dfa/- (map dfa/dfa specs))))
 
-(comment 
-  regex=> (exec (regex [(repeat {\a \z}) :as :a] " " [(repeat {\a \z}) :as :b]) 
+(comment
+  regex=> (exec (regex [(repeat {\a \z}) :as :a] " " [(repeat {\a \z}) :as :b])
             "hello world")
   {:b "world", :a "hello", nil "hello world"}
-  
-  (def datestamp-re 
+
+  (def datestamp-re
     (let [d {\0 \9}]
       (regex [d d d d :as :year] \- [d d :as :month] \- [d d :as :day])))
   regex=> (exec datestamp-re "2007-10-23")
