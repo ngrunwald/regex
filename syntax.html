@@ -15,7 +15,7 @@
 <dl class="syntax">
 <dt id="regex"><a href="#regex">regex</a></dt>
     <dd><code>(regex</code> <a href="#group">group</a> <code>)</code></dd>
-
+    
 <dt id="group"><a href="#group">group</a></dt>
     <dd><a href="#fragment">fragment</a>* (<code>:as</code> <code>:a-name</code>)? ; capturing only when named</dd>
 
@@ -25,7 +25,7 @@
     <dd><code>{</code> (<a href="#char">char</a> <a href="#char">char</a>)* <code>}</code> ; char ranges, both ends inclusive</dd>
     <dd><code>[</code> <a href="#group">group</a> <code>]</code></dd>
     <dd><code>#{</code> <a href="#fragment">fragment</a>* <code>}</code> ; unordered alternative</dd>
-    <dd><code>(|</code> <a href="#fragment">fragment</a>* <code>)</code> ; ordered alternative</dd>
+    <dd><code>(ordered-pipe</code> <a href="#fragment">fragment</a>* <code>)</code> ; ordered alternative</dd>
     <dd><code>a-symbol</code> ; must evaluate to a fragment</dd>
     <dd><code>(some clojure code)</code> ; must evaluate to a fragment</dd>
     <dd>; predefined helpers:</dd>
